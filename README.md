@@ -1,4 +1,4 @@
-# 👁️ Argus
+# 👁️ ARGUS — AI Risk Gathering & Urgent Signaling 
 
 **AI Security Threat Intelligence Agent for Guard0** — an automated pipeline that scans
 the AI/ML security landscape, classifies threats with persona-based insights, and delivers
