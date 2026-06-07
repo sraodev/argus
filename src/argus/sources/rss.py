@@ -16,6 +16,14 @@ logger = logging.getLogger(__name__)
 
 RSS_TIMEOUT = 20.0
 
+# Many feeds (Cloudflare-fronted: TheHackerNews, BleepingComputer, Krebs, …)
+# return HTTP 403 to feedparser's default "feedparser/x.y" User-Agent. Present
+# a normal browser UA so those feeds actually serve content.
+USER_AGENT = (
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
+    "(KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+)
+
 
 async def fetch_rss_articles(
     feed_urls: list[str],
@@ -46,7 +54,7 @@ async def fetch_rss_articles(
 async def _fetch_single(feed_url: str, cutoff: datetime) -> list[Article]:
     """Parse one feed in a thread (feedparser is sync) and normalize entries."""
     parsed = await asyncio.wait_for(
-        asyncio.to_thread(feedparser.parse, feed_url),
+        asyncio.to_thread(feedparser.parse, feed_url, agent=USER_AGENT),
         timeout=RSS_TIMEOUT,
     )
 

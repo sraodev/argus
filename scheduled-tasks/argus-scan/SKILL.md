@@ -14,7 +14,7 @@ You have no memory of past runs. All state lives on disk under ~/.argus/data/. R
 Run this exact Bash command FIRST:
 
 ```bash
-/Users/om/Documents/omlabs/code/argus/.venv/bin/python - <<'PY'
+"${ARGUS_PYTHON:-python3}" - <<'PY'
 import sys
 from datetime import datetime
 from pathlib import Path
@@ -37,7 +37,7 @@ If that script exits with code 99, **STOP — do not run any further steps**. Pr
 Run this exact Bash command to fetch from 13 RSS feeds, dedupe against ~/.argus/data/seen_urls.json, and write the new ones to /tmp/argus_new.json. The window is 26 hours so nothing falls through cracks even if a previous day's run was late.
 
 ```bash
-mkdir -p ~/.argus/data && /Users/om/Documents/omlabs/code/argus/.venv/bin/python - <<'PY'
+mkdir -p ~/.argus/data && "${ARGUS_PYTHON:-python3}" - <<'PY'
 import json, feedparser, time
 from pathlib import Path
 from datetime import datetime, timezone, timedelta
@@ -58,6 +58,9 @@ FEEDS = [
     "https://owasp.org/feed.xml",
 ]
 
+# Cloudflare-fronted feeds 403 feedparser's default UA; present a browser UA.
+UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"
+
 data_dir = Path.home() / ".argus" / "data"
 data_dir.mkdir(parents=True, exist_ok=True)
 seen_path = data_dir / "seen_urls.json"
@@ -68,7 +71,7 @@ new = []
 
 for url in FEEDS:
     try:
-        feed = feedparser.parse(url)
+        feed = feedparser.parse(url, agent=UA)
     except Exception as e:
         print(f"WARN feed {url}: {e}")
         continue
@@ -138,7 +141,7 @@ Write your classifications array to `/tmp/argus_classified.json`.
 Run this Bash command to merge results into Argus state files:
 
 ```bash
-/Users/om/Documents/omlabs/code/argus/.venv/bin/python - <<'PY'
+"${ARGUS_PYTHON:-python3}" - <<'PY'
 import json
 from pathlib import Path
 from datetime import datetime, timezone
@@ -193,7 +196,7 @@ Then, if any critical items exist, list them as:
 Run this Bash command to deliver per-scan alerts and summary. It silently no-ops if `SLACK_BOT_TOKEN` or `SLACK_CHANNEL` is missing in `~/.argus/.env`.
 
 ```bash
-/Users/om/Documents/omlabs/code/argus/.venv/bin/python - <<'PY'
+"${ARGUS_PYTHON:-python3}" - <<'PY'
 import json, os
 from pathlib import Path
 from dotenv import dotenv_values
@@ -277,7 +280,7 @@ PY
 After all other steps complete (whether successful or with empty results), write today's local date to the marker file so the daily guard skips later fires today:
 
 ```bash
-/Users/om/Documents/omlabs/code/argus/.venv/bin/python - <<'PY'
+"${ARGUS_PYTHON:-python3}" - <<'PY'
 from datetime import datetime
 from pathlib import Path
 today = datetime.now().strftime("%Y-%m-%d")
@@ -290,8 +293,8 @@ PY
 
 ## Constraints
 
-- Use the venv at `/Users/om/Documents/omlabs/code/argus/.venv/bin/python` for all Python — feedparser, slack_sdk, python-dotenv are pre-installed there.
-- Never modify code under `/Users/om/Documents/omlabs/code/argus/` — that's the source repo.
+- All Python runs via `${ARGUS_PYTHON:-python3}`. Set the `ARGUS_PYTHON` environment variable to your Argus venv interpreter (e.g. `export ARGUS_PYTHON=/path/to/argus/.venv/bin/python`) so feedparser, slack_sdk, and python-dotenv are available. If unset, it falls back to the system `python3`, which must have those packages installed (`pip install feedparser slack-sdk python-dotenv`).
+- Never modify code in the Argus source repo — only read it and write state under `~/.argus/`.
 - All Argus state lives under `~/.argus/data/`. Do not write anywhere else except `/tmp/`.
 - Slack delivery requires `SLACK_BOT_TOKEN` and `SLACK_CHANNEL` in `~/.argus/.env`. If either is missing, Step 6 silently no-ops — that's intentional, not an error.
 - If a feed errors, log "WARN feed {url}" and continue — partial scans are fine.
