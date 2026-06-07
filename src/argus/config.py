@@ -29,7 +29,9 @@ class Config:
 
     # Claude API
     anthropic_api_key: str = field(default_factory=lambda: os.getenv("ANTHROPIC_API_KEY", ""))
-    model: str = field(default_factory=lambda: os.getenv("ARGUS_MODEL", "claude-sonnet-4-20250514"))
+    model: str = field(
+        default_factory=lambda: os.getenv("ARGUS_MODEL") or "claude-sonnet-4-20250514"
+    )
 
     # Feedly
     feedly_token: str = field(default_factory=lambda: os.getenv("FEEDLY_TOKEN", ""))
@@ -44,7 +46,9 @@ class Config:
 
     # Slack
     slack_bot_token: str = field(default_factory=lambda: os.getenv("SLACK_BOT_TOKEN", ""))
-    slack_channel: str = field(default_factory=lambda: os.getenv("SLACK_CHANNEL", "#argus-intel"))
+    slack_channel: str = field(
+        default_factory=lambda: os.getenv("SLACK_CHANNEL") or "#argus-intel"
+    )
 
     # WhatsApp (Twilio)
     twilio_account_sid: str = field(default_factory=lambda: os.getenv("TWILIO_ACCOUNT_SID", ""))

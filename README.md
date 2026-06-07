@@ -284,7 +284,7 @@ For long-term unattended use, register an OAuth app in the Feedly Developer Cons
 
 ---
 
-## Scheduling — four upgrade paths
+## Scheduling — pick your path
 
 Argus is designed to run automatically. Pick the path that matches your setup.
 
@@ -313,6 +313,29 @@ persists to `~/.argus/data/`, and posts to Slack.
 Runs on Anthropic's infrastructure on a real cron, no Mac required. Same SKILL.md
 format. Visit https://claude.ai/code/routines to set up. Cost: per-run API time
 (small).
+
+### Stage 2b — GitHub Actions (cloud cron, no laptop, nothing to host)
+
+Runs entirely in GitHub's cloud on a schedule — no laptop, no server, no Mac.
+The workflow is checked in at
+[`.github/workflows/argus.yml`](.github/workflows/argus.yml).
+
+1. Add repository secrets under **Settings → Secrets and variables → Actions**:
+   - `ANTHROPIC_API_KEY` — required (classification runs against the API, so this
+     path **costs API credits**, unlike the subscription-based Stages 1–2).
+   - `SLACK_BOT_TOKEN` and `SLACK_CHANNEL` — optional; omit to run without Slack.
+   - (optional) repository **variable** `ARGUS_MODEL` to override the model.
+2. That's it. The workflow fires automatically:
+   - **scan** every 4 hours,
+   - **daily digest** at 02:30 UTC (08:00 IST),
+   - **weekly brief** Mondays at 03:00 UTC.
+3. Run it by hand anytime from the **Actions** tab → *Argus* → *Run workflow*,
+   choosing `scan`, `digest`, `digest --dry-run`, etc.
+
+State (dedup cache + the day's article accumulator) is persisted between runs via
+a rolling `actions/cache` entry, so dedup and the daily digest work correctly
+across the ephemeral runners. Cron times are UTC — edit them in the workflow to
+match your timezone.
 
 ### Stage 3 — Raspberry Pi (headless, always on)
 

@@ -1,0 +1,92 @@
+name: Argus
+
+# Runs Argus entirely in GitHub's cloud — no local laptop required.
+#
+# Required repository secrets (Settings → Secrets and variables → Actions):
+#   ANTHROPIC_API_KEY   — used for article classification (paid API credits)
+#   SLACK_BOT_TOKEN     — Slack bot token (xoxb-...) for delivery     [optional]
+#   SLACK_CHANNEL       — e.g. #argus-intel                            [optional]
+# Optional repository variable:
+#   ARGUS_MODEL         — override the classification model
+#
+# Cron times are UTC. Defaults below assume an India (IST = UTC+5:30) audience:
+#   scan   every 4 hours
+#   digest 02:30 UTC (= 08:00 IST)
+#   weekly 03:00 UTC Monday (= 08:30 IST)
+
+on:
+  schedule:
+    - cron: "0 */4 * * *"   # scan
+    - cron: "30 2 * * *"    # daily digest
+    - cron: "0 3 * * 1"     # weekly executive brief
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "Command to run"
+        type: choice
+        default: scan
+        options:
+          - scan
+          - "scan --dry-run"
+          - digest
+          - "digest --dry-run"
+          - "digest --weekly"
+
+# Serialize runs so a scan and a digest never clobber each other's state cache.
+concurrency:
+  group: argus-state
+  cancel-in-progress: false
+
+jobs:
+  argus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Argus
+        run: pip install -e .
+
+      # Rolling state cache: each run writes a new immutable key, and restores
+      # the most recent one matching the prefix. Because runs happen every few
+      # hours, the chain stays warm and seen_urls.json / today_articles.json
+      # persist across invocations.
+      - name: Restore Argus state
+        uses: actions/cache@v4
+        with:
+          path: argus-data
+          key: argus-state-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            argus-state-
+
+      - name: Decide command
+        id: cmd
+        env:
+          EVENT: ${{ github.event_name }}
+          SCHED: ${{ github.event.schedule }}
+          MODE: ${{ github.event.inputs.mode }}
+        run: |
+          if [ "$EVENT" = "workflow_dispatch" ]; then
+            ARGS="$MODE"
+          elif [ "$SCHED" = "30 2 * * *" ]; then
+            ARGS="digest"
+          elif [ "$SCHED" = "0 3 * * 1" ]; then
+            ARGS="digest --weekly"
+          else
+            ARGS="scan"
+          fi
+          echo "args=$ARGS" >> "$GITHUB_OUTPUT"
+          echo "Running: argus $ARGS"
+
+      - name: Run Argus
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+          SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
+          SLACK_CHANNEL: ${{ secrets.SLACK_CHANNEL }}
+          ARGUS_MODEL: ${{ vars.ARGUS_MODEL }}
+          ARGUS_DATA_DIR: ${{ github.workspace }}/argus-data
+          ARGUS_LOG_DIR: ${{ github.workspace }}/argus-data/logs
+        run: argus ${{ steps.cmd.outputs.args }}
