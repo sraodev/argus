@@ -113,7 +113,10 @@ def _parse_search_item(item) -> Article | None:
         return None
 
     title = _get("title", "(untitled)").strip() or "(untitled)"
-    snippet = _get("encrypted_content") or _get("snippet") or _get("page_age", "")
+    # NB: web_search_result exposes `encrypted_content` (an opaque blob meant to
+    # be fed back to the API, not displayed) and `page_age`. Use only the
+    # human-readable fields for the summary; never the encrypted blob.
+    snippet = _get("snippet") or _get("page_age", "")
     summary = (snippet[:500] if isinstance(snippet, str) else "")
     source_name = _domain_of(url)
 

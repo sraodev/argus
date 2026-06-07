@@ -71,10 +71,17 @@ class Config:
         default_factory=lambda: [
             "https://feeds.feedburner.com/TheHackersNews",
             "https://github.com/advisories.atom",
-            "https://owasp.org/feed.xml",
+            "https://protectai.com/blog/rss.xml",
+            "https://unit42.paloaltonetworks.com/feed/",
+            "https://blog.talosintelligence.com/rss/",
+            "https://www.darkreading.com/rss.xml",
+            "https://www.rapid7.com/blog/rss/",
+            "https://security.googleblog.com/feeds/posts/default",
+            "https://www.cisa.gov/cybersecurity-advisories/all.xml",
             "https://krebsonsecurity.com/feed/",
             "https://www.bleepingcomputer.com/feed/",
             "https://blog.trailofbits.com/feed/",
+            "https://owasp.org/feed.xml",
         ]
     )
 
