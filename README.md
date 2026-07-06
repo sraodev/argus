@@ -29,46 +29,14 @@ is noise; the rest is critical and time-sensitive. Argus exists to:
 
 ## Architecture
 
-```
-                ┌───────────────────────────────────────────────┐
-                │              SOURCES (parallel)               │
-                │  ┌──────────┐  ┌──────────┐  ┌──────────────┐ │
-                │  │ Feedly   │  │ 13 RSS   │  │ Claude       │ │
-                │  │ category │  │ feeds    │  │ web_search   │ │
-                │  └─────┬────┘  └─────┬────┘  └──────┬───────┘ │
-                └────────┼─────────────┼──────────────┼─────────┘
-                         └─────────────┼──────────────┘
-                                       ▼
-                         ┌─────────────────────────┐
-                         │   Dedup vs seen_urls    │
-                         └────────────┬────────────┘
-                                      ▼
-                         ┌─────────────────────────┐
-                         │  Pre-filter (keywords)  │ ← skip / fast / needs-llm
-                         └────────────┬────────────┘
-                                      ▼
-                         ┌─────────────────────────┐
-                         │  Claude classification  │ ← criticality, CISO TL;DR,
-                         │     (batch of 10)       │   engineer action, tags
-                         └────────────┬────────────┘
-                                      ▼
-              ┌───────────────────────┴───────────────────────┐
-              ▼                                               ▼
-   ┌─────────────────────┐                        ┌─────────────────────┐
-   │  CRITICAL pathway   │                        │   Persistence       │
-   │  ── Slack alert     │                        │  ── today_articles  │
-   │  ── WhatsApp ping   │                        │  ── seen_urls       │
-   │  (immediate)        │                        │  ── scans/<ts>.json │
-   └─────────────────────┘                        └─────────────────────┘
-                                                              │
-                                                              ▼
-                                             ┌────────────────────────────┐
-                                             │ Daily digest (8am cron)    │
-                                             │  ── Slack (full Block Kit) │
-                                             │  ── WhatsApp (top 3)       │
-                                             │  ── archive digest         │
-                                             └────────────────────────────┘
-```
+![Argus architecture — triggers, parallel sources, dedup, two-stage classifier, and fan-out to critical alerts, persistence, and the scheduled digest](docs/architecture.png)
+
+Four interchangeable triggers (CLI/cron, Claude Scheduled Task, GitHub Actions,
+Cloud Routines) invoke the same pipeline: parallel **sources** fan into **dedup**, a
+two-stage **classifier** (free keyword pre-filter → paid Claude batch), then a fan-out to
+the **immediate critical pathway** (Slack + WhatsApp), **local-JSON persistence**, and the
+**scheduled digest** (daily/weekly). The editable source is at
+[`docs/architecture.svg`](docs/architecture.svg).
 
 ### State on disk
 
